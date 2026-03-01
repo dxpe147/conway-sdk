@@ -1,0 +1,180 @@
+# pyproject.toml — Conway SDK
+# PEP 621 / PEP 517 packaging configuration
+# Build backend: hatchling (src layout support, no setup.py required)
+
+[build-system]
+requires      = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+# ---------------------------------------------------------------------------
+# Project metadata (PEP 621)
+# ---------------------------------------------------------------------------
+
+[project]
+name        = "conway-sdk"
+version     = "1.0.0"
+description = "Python SDK for EIP-3009 payment signing and agent identity models"
+readme      = "README.md"
+license     = { file = "LICENSE" }
+authors     = [{ name = "dxpe_7" }]
+keywords    = [
+    "conway", "web3", "eip3009", "eip712",
+    "x402", "usdc", "payments", "ethereum",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Office/Business :: Financial",
+    "Typing :: Typed",
+]
+requires-python = ">=3.10"
+
+# Core runtime dependencies — kept intentionally minimal.
+# Optional extras (redis, kms) bring in heavier dependencies only when needed.
+dependencies = [
+    # EVM signing — EIP-712 structured data, ECDSA
+    "eth-account>=0.11,<1.0",
+    # eth-account pulls these in, but pin for stability
+    "eth-typing>=3.0",
+    "eth-utils>=2.0",
+    # Pydantic v2 for PaymentRequirements / PaymentAuthorization models
+    "pydantic>=2.6,<3.0",
+    # HTTP client used by ConwayClient / AsyncConwayClient
+    "httpx>=0.27,<1.0",
+]
+
+# ---------------------------------------------------------------------------
+# Optional dependency groups
+# ---------------------------------------------------------------------------
+
+[project.optional-dependencies]
+
+# Distributed Redis nonce deduplication
+redis = [
+    "redis>=5.0,<7.0",
+]
+
+# AWS KMS wallet
+kms = [
+    "boto3>=1.34,<2.0",
+    "cryptography>=42.0",
+]
+
+# PostgreSQL persistence (psycopg v3 + connection pool)
+distributed = [
+    "psycopg[binary]>=3.1,<4.0",
+    "psycopg-pool>=3.1,<4.0",
+]
+
+# ATR REST API runtime
+atr-api = [
+    "fastapi>=0.111,<1.0",
+    "uvicorn[standard]>=0.30,<1.0",
+    "pydantic-settings>=2.3,<3.0",
+]
+
+# Development tooling
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "fakeredis>=2.20",
+    "anyio[trio]>=4.0",
+    "mypy>=1.9",
+    "ruff>=0.4",
+    "pre-commit>=3.7",
+]
+
+# ---------------------------------------------------------------------------
+# Project URLs
+# ---------------------------------------------------------------------------
+
+[project.urls]
+Homepage   = "https://github.com/dxpe147/conway-sdk"
+Repository = "https://github.com/dxpe147/conway-sdk"
+Changelog  = "https://github.com/dxpe147/conway-sdk/blob/main/CHANGELOG.md"
+Issues     = "https://github.com/dxpe147/conway-sdk/issues"
+
+# ---------------------------------------------------------------------------
+# Hatch build — src layout
+# ---------------------------------------------------------------------------
+
+[tool.hatch.build.targets.wheel]
+# Package only src/conway_sdk — excludes tests, docs, scripts
+packages = ["src/conway_sdk"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/",
+    "tests_sdk/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "pyproject.toml",
+]
+exclude = [
+    "**/__pycache__",
+    "**/*.pyc",
+]
+
+# ---------------------------------------------------------------------------
+# Ruff — linting and formatting
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py310"
+line-length    = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "TID"]
+ignore = ["E501"]   # line length handled by formatter
+
+[tool.ruff.lint.isort]
+known-first-party = ["conway_sdk"]
+
+# ---------------------------------------------------------------------------
+# Mypy — static type checking
+# ---------------------------------------------------------------------------
+
+[tool.mypy]
+python_version      = "3.10"
+strict              = true
+warn_return_any     = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["eth_account.*", "eth_utils.*", "eth_typing.*", "boto3.*", "botocore.*"]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths    = ["tests_sdk"]
+addopts      = "--tb=short -q"
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m not integration')",
+    "signing: marks tests that exercise cryptographic signing",
+]
+
+# ---------------------------------------------------------------------------
+# Coverage
+# ---------------------------------------------------------------------------
+
+[tool.coverage.run]
+source = ["src/conway_sdk"]
+omit   = ["*/tests_sdk/*", "**/__pycache__/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under   = 80
